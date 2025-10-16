@@ -1,0 +1,236 @@
+---
+title: Selenium入门——58、安居客爬虫实战
+date: '2025-01-20'
+tags: ['selenium','crawl']
+draft: false
+images: ['/static/images/a/image-20250209154903441.png','/static/images/a/image-20250209145436332.png','/static/images/a/image-20250209171752079.png','/static/images/a/image-20250209183222320.png','/static/images/a/image-20250209201507493.png','/static/images/a/image-20250210220234497.png','/static/images/a/image-20250211220431667.png','/static/images/a/image-20250212205117104.png','/static/images/a/image-20250212213410133.png','/static/images/a/image-20250212214154814.png']
+summary: 这篇文章介绍了如何使用 Selenium 实现网页爬虫，重点通过爬取安居客和58同城的房源数据进行实践。文章还提供了应对反爬虫机制的技巧，如降低访问频率、使用代理和随机 User-Agent。
+---
+
+# Selenium入门——58、安居客爬虫实战
+## 引言
+如果你是一个数据工程师，你可能需要收集大量数据来分析某些商品的价格走势或者预测股票市场的动向；如果你是一个研究生，你可能需要收集大量公开的学术文章、或者统计数据来写论文；如果你是某公司的产品经理，你可能需要收集同行们的数据或者类似产品的销量，来促进自己产品的升级；如果你是程序员，那么你可能需要收集一些开源资源来辅助开发。
+
+那么你确实需要爬虫来帮助你快速实现这些目标。
+
+一个网页可以大致理解为，一个客户端和一个服务端，当你在浏览器中输入一个网址，你的浏览器，也就是客户端会向服务端发起一个请求
+，要求获得相应的网页内容。服务端收到这个请求后会处理这个请求并将对应的网页数据发送回浏览器。
+
+试想，如果我们能控制浏览器，那么这些数据是不是就能轻易拿到。因此引出我们今天要讲的selenium，它可以利用浏览器驱动控制浏览器
+，模拟真实用户的各种浏览行为，包括点击链接、填写表单、滚动页面等。
+
+Selenium 主要通过其 WebDriver 接口实现对浏览器的控制，这个接口提供了一系列的方法来模拟用户操作，包括那些需要动态加载的数据，或是通过 JavaScript 运行后才呈现的内容。
+
+## 前提
+
++ 已安装python
++ 已安装pycharm
++ 对HTML标签语言有一定的了解
+
+## Let`s Go
+
+在对Selenium进行简单的了解后，我们开始今天的正题
+
+### Setp1：下载Selenium
+
+通过 Python 的包管理器 pip 来安装 Selenium。
+
+```nginx
+pip install selenium
+```
+
+### Setp2：下载浏览器及其对应的驱动
+
+你可以选择Chrome浏览器、FireFox、Edge或者其他实现了 [W3C WebDriver 标准](https://w3c.github.io/webdriver/webdriver-spec.html)的浏览器。
+
+这里我使用Chrome浏览器，通过谷歌为开发者提供的下面链接来寻找你想要的版本
+
+```bash
+https://developer.chrome.com/docs/chromedriver
+```
+
+我选择使用当前最新的稳定版本，下载浏览器及对应的驱动的压缩包。
+
+```
+https://googlechromelabs.github.io/chrome-for-testing/
+```
+
+![image-20250209145436332](/static/images/a/image-20250209145436332.png)
+
+如果你是Linux，就选择linux64，如果你的电脑是Mac则下载对应的Max版本。
+
+下载完后解压缩并放到项目目录下，并使用下面代码测试
+
+![image-20250209154903441](/static/images/a/image-20250209154903441.png)
+
+```python
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.ie.service import Service
+
+s = Service("chrome/chromedriver-win64/chromedriver.exe")
+chrome_options = Options()
+chrome_options.binary_location ="chrome/chrome-win64/chrome.exe"
+# chrome_options.add_argument("--headless")
+# chrome_options.add_argument("--no-sandbox")
+# chrome_options.add_argument("--disable-dev-shm-usage")
+driver = webdriver.Chrome(service=s,options=chrome_options)
+
+driver.get("http://baidu.com")
+print(driver.title)
+driver.close()
+```
+
+>   如果你的脚本是在Linux上跑，那这里的配置你可以加一个headless参数，使浏览器在无头模式下运行。无头模式是指浏览器在后台运行而不显示任何用户界面的模式，这对于服务器和自动化测试环境非常有用，因为它不需要图形用户界面支持即可运行，可以减少资源消耗。再加一个no-sandbox参数，如果你的脚本跑在docker里，disable-dev-shm-usage参数需要加上，避免因为资源有限而引起某些界面的意外crash。
+
+### Step3：爬取安居客的房源数据
+
+首先明确我们要获取数据的目标网页的地址，即：https://m.anjuke.com/jn/sale/
+
+以及我们想要抓取的目标数据，比如每一项的标题和价格。我们可以先在浏览器里打开这个页面，按F12快捷键打开谷歌的开发者工具，观察这个网页的信息。
+
+点一下左上角的小箭头，再点一下我们希望获取的数据。
+
+可以看到标题包裹在一个`<span>`标签里，这个标签的class值是“content-title"。价格同样包裹在一个`<span>`标签里，class值为content-price。
+
+每一个条目都是一个class值为item-wrap的`<li>`标签。
+
+那么如何通过Selenium定位到这些元素呢？
+
+Selenium提供了8种定位方法，具体可以参照官方文档：https://www.selenium.dev/documentation/webdriver/elements/locators/
+
+![image-20250209171752079](/static/images/a/image-20250209171752079.png)
+
+你可以通过class名称或者id值定位到你想要的DOM元素，就像前面在浏览器中观察的那样，每个条目的class名称和标题的class名称、价格的class名称都是已知的，因此我们可以通过下面代码来获取每个条目的标题、价格：
+
+```python
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.ie.service import Service
+
+s = Service("chrome/chromedriver-win64/chromedriver.exe")
+chrome_options = Options()
+chrome_options.binary_location = "chrome/chrome-win64/chrome.exe"
+driver = webdriver.Chrome(service=s, options=chrome_options)
+driver.get("https://m.anjuke.com/jn/sale/")
+elements = driver.find_elements(By.CLASS_NAME, "item-wrap")
+for index, element in enumerate(elements):
+    title = element.find_element(By.CLASS_NAME, "content-title")
+    print(f"第{index+1}个条目的标题是：{title.text}")
+    price = element.find_element(By.CLASS_NAME, "content-price")
+    print(f"第{index+1}个条目的价格是：{price.text}")
+driver.close()
+```
+
+这样就拿到了我们所要的数据，就是这么简单，你只需要下载好浏览器及其对应的驱动，然后定位到我们想要的前端元素，就能拿到数据。
+
+在开发中除了使用class的名称定位元素，XPATH表达式也是一种常见的选择，XPATH（XML Path Language）顾名思义，是一种在XML文档中通过路径查找信息的语言，也广泛应用于HTML以定位网页中的节点。可以说，没有XPATH定位不到的元素，他能通过各种属性（如id、class、名称等）、元素位置或甚至是元素周围的文本来选择元素，也能通过复杂的条件选择特定的元素。
+
+XPATH提供了绝对路径和相对路径来定位元素，前者是从DOM文档的根节点开始，后者是从某个特定的元素开始。
+
+比如说，我们想要拿到跳转链接，通过浏览器F12分析前端代码发现这个跳转链接在`<li>`元素下第一个`<a>`标签的href属性里。
+
+![image-20250209183222320](/static/images/a/image-20250209183222320.png)
+
+我们可以通过下面表达式获得数据
+
+```python
+a = element.find_element(By.XPATH,".//a")
+print(f"第{index+1}个条目的跳转链接是{a.get_attribute('href')}")
+```
+
+这里的 `.` 表示从当前元素（即 `element`）作为起点，而不是从整个文档的根节点开始。`//a` 表示选择从当前节点开始的所有子节点以及嵌套子节点中的 `<a>` 标签。这里也可以使用一个斜杠，表示仅从子节点里寻找，而不包括子子节点。
+
+### Step4：动态加载页面
+
+安居客的页面是动态加载的，划到最底下后等几秒就会加载下一页，对于这种动态加载的页面，你可以一次性滑到最底层，等待所有页面都加载完后进行爬虫，也可以设置一个变量存储当前条目的索引，从当前索引开始处理或者保存数据，爬完一页就设置新的索引，一页一页动态地爬。
+
+可以使用 JavaScript 执行滚动操作，滚动到页面最底下，休眠几秒等待翻页。
+
+```python
+last_height = driver.execute_script("return document.body.scrollHeight")
+while True:
+    # 滑动到页面最底下
+    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+    time.sleep(5)
+    new_height = driver.execute_script("return document.body.scrollHeight")
+    if new_height == last_height:
+        print("翻页失败")
+        break
+    last_height = new_height
+driver.close()
+```
+
+### Step5：爬取58同城的数据
+
+通过以上步骤获得了安居客的数据，现在再看58同城也是一样的流程。首先确定要爬取的目标网站URL：https://jn.58.com/ershoufang/
+
+![image-20250209201507493](/static/images/a/image-20250209201507493.png)
+
+再通过浏览器F12分析页面元素，分析的步骤和安居客的一样，通过class名或者XPATH定位元素，然后获取数据。与安居客不同的是，58同城的翻页是点击下一页，这里可以通过下面代码来模拟用户点击按钮：
+
+```python
+driver.find_element(By.XPATH,"//a[contains(text(),'下一页')]").click()
+```
+
+包括一些简单的人机验证，也可以使用Selenium来模拟用户完成验证，只需要定位到页面元素，然后Click。
+
+
+
+## 应对反爬
+
+### 1、降低访问频率
+
+你在爬虫过程中可能会遇到弹人机、418 I am teapot这样的情况，这往往是访问过于频繁导致的，严重时甚至会封IP。
+
+建议在每次请求后设置一个不少于10s的休眠时间，可以降低弹人机的概率。或者使用IP代理池，用不同的ip去访问目标网站，分散流量，避免单个IP在单位时间内访问频繁而导致封禁。
+
+![image-20250210220234497](/static/images/a/image-20250210220234497.png)
+
+可以设置一个重试次数，在爬取过程中遇到一些意外的网络中断失败后，继续尝试，每次请求后可以采用指数退避策略来增加重试间隔，这种方法能有效减少连续请求对服务器的压力，并增加请求成功的可能性。
+
+### 2、使用随机UA
+
+很多网站会通过User-Agent来区分正常用户和机器人，可以使用不同的UA来模拟不同设备的访问，从而避免被目标网站标记为不良用户。
+
+在python中有一个生成随机UA的库，[fake_useragent](https://pypi.org/project/fake-useragent/)，通过它可以获得不同的User-Agent。你可以指定不同的浏览器、不同的操作系统、不同的平台或者完全随机，但是要注意一点，某些网站会根据用户代理返回不同格式的网页，以适配不同设备，比如安居客和58同城针对移动设备和pc设备各有一套UI，不同的UI会导致selenium的定位逻辑失效。
+
+## 原理以及下一步
+
+Selenium的核心组件是WebDriver，一种与浏览器进行通信的工具。每种主流浏览器都有对应的WebDriver实现，这些驱动程序，如ChromeDriver、GeckoDriver（Firefox）、EdgeDriver等，充当了浏览器和自动化代码之间的桥梁，使得自动化工具可以与之交互。
+
+![image-20250211220431667](/static/images/a/image-20250211220431667.png)
+
+windows+R快捷键，打开命令提示符，输入
+
+```cmd
+netstat -aon | findstr :{你的port}
+```
+
+记住这个进程的pid，桌面下方右击打开任务管理器，在“详细”这一界面，点一下pid这个列标题，让这些进程按照pid排序，方便我们查找。
+
+可以看到，这个端口是属于一个“chromedriver.exe"进程的，这说明Selenium之所以能控制浏览器，是因为它能正确的与浏览器驱动进行通信，从而操纵浏览器。
+
+再回来看我们的超长W3C标准
+
+webdriver提供了一套用来操作网页DOM元素的接口，并且能控制客户端的行为。它主要是为了网页开发者能够编写独立于浏览器的自动化测试程序。
+
+![image-20250212205117104](/static/images/a/image-20250212205117104.png)
+
+回到前面我们下载谷歌浏览器驱动时，谷歌在官方文档就提到了这一点，ChromeDriver是一款实现了W3C标准的独立服务器。也因此，ChromeDriver能够被Selenium控制。Selenium是利用W3C标准，可以和各种遵循W3C的浏览器驱动进行通信，从而控制浏览器的一套框架。
+
+**互联网的底层是各种协议**，无论是selenium还是webdriver，他们都是W3C协议的产物。
+
+![image-20250212213410133](/static/images/a/image-20250212213410133.png)
+
+
+
+理解了原理之后，剩下的就很简单了，如果你想要进一步熟悉如何控制浏览器，如何与网页DOM元素交互，你可以看[selenium官方的教程](https://www.selenium.dev/documentation/webdriver/)，官方提供了针对各种网页组件交互的示例代码，无论你喜欢python还是java，这里都有示例。
+
+![image-20250212214154814](/static/images/a/image-20250212214154814.png)
+
+除此之外，在爬虫的学习过程中，应对反爬也是很重要的一部分。除了限制来自单一IP的访问频率、通过UA识别机器人，有些网站还会识别selenium，通过一些js标志来区别正常浏览器和由selenium控制的浏览器。当然，这种反爬也是有相应的解决方法的。由于本实例中的安居客和58同城只对访问频率进行了限制，这部分内容暂且不谈。
+
+
+

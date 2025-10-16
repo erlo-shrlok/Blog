@@ -1,0 +1,91 @@
+---
+title: 主流自动化框架对比
+date: '2025-09-07'
+tags: ['Auto-Test','playwright']
+draft: false
+images: []
+summary: 这篇文章对比了几种主流的自动化测试框架，包括 Selenium、Playwright、Puppeteer 和 DrissionPage，并介绍了它们的历史发展和技术背景。说明选择框架需要考虑性能、兼容性和开发需求，Selenium 在传统和复杂环境中具有优势，而基于 CDP 协议的新兴框架如 Playwright 和 Puppeteer 提供了更高效的浏览器控制。
+---
+
+# 主流自动化框架对比
+
+## 历史发展路径
+
+> Puppeteer、Playwright、Selenium...市面上的自动化测试框架五花八门，如何选择？不如先纵观历史，找到这些自动化框架诞生的根源。
+
+早期，Web自动化测试利用web API、Node.js在浏览器中执行js，他对浏览器的控制是有限的，在设备兼容性，跨平台方面有所欠缺，后来Selenium基于Webdriver驱动协议，加深了对浏览器的控制，并有效弥补了早期方案在兼容性和跨平台上的短板。Webdriver协议经过了合并、更迭，最终形成了一个兼容的、统一的W3C驱动国际标准协议——[W3C Webdriver协议](https://www.w3.org/TR/webdriver2/)，这个由浏览器提供商、自动化工具提供商双方共同协商、维护的协议让Web自动化测试迎来了一个新的时代。但随着 Web 应用的规模和复杂度日益增加，传统 WebDriver 在效率和执行性能上的不足也逐渐显现，于是CDP协议应运而生。
+
+![image-20250901221133923](/static/images/a/image-20250901221133923.png)
+
+从整体上看，CDP的优化主要归于两个方面，一方面，Webdriver协议通过控制浏览器驱动来间接的控制浏览器，而CDP协议让自动化测试工具直接与浏览器沟通。
+
+![image-20250901224016791](/static/images/a/image-20250901224016791.png)
+
+
+
+另一方面，每个环节之间的通信由HTTP转变为WebSocket或者直接进程间管道通信这种更高效的通信方式。HTTP协议有一个特点&缺点——无状态。浏览器无法主动跟客户端沟通，也无法直接推送状态变化，只能依赖客户端不断发起请求进行轮询，形成单向通信。而 WebSocket 则打破了这一限制，实现了双向、持续的连接，大幅提升了通信效率与响应速度。
+
+![image-20250901224954194](/static/images/a/image-20250901224954194.png)
+
+CDP全称是Chrome DevTools Protocol，是谷歌为自家浏览器打造的调试协议，在Chrome浏览器里按F12唤出的开发者工具即是基于CDP协议的，既可以用来观察、控制页面元素，又能抓包分析。
+
+![image-20250902214543252](/static/images/a/image-20250902214543252.png)
+
+![image-20250902225117692](/static/images/a/image-20250902225117692.png)
+
+
+
+> 类似的，其他浏览器也有自己的调试协议、远程控制协议，但并不完善，暴漏的功能少。比如firefox有Marionette协议（HTTP），按照这个协议请求可以控制firefox的部分功能；Safari有二次封装的Webkit 调试协议协议。
+
+CDP协议虽然好用，但并不是所有浏览器都可以用CDP进行沟通，
+
+![image-20250902225434479](/static/images/a/image-20250902225434479.png)
+
+因此也就有了[WebDriver BiDi协议](https://github.com/w3c/webdriver-bidi)（W3C正拉着各个浏览器、测试工具厂商共同研讨制定中），其主张打造一款兼容所有浏览器的协议，以使任何自动化工具都可以通过这个协议与任何浏览器沟通。![image-20250904204006253](/static/images/a/image-20250904204006253.png)
+
+BiDi协议的含义是，bi-directional ，双向通信，对标老的W3C driver驱动协议的HTTP协议。并致力在性能上更优于CDP协议，减少来回通信的次数，提高通信效率。比如要获取一个对象的ID和值，CDP要分别去取，走两个来回，而BIDI只需要走一个来回，对象的ID和值一一次性取来。
+
+目前很多主流浏览器、测试工具中都已标有支持BIDI的字样，但实际使用的还是CDP。
+
+![image-20250904212815677](/static/images/a/image-20250904212815677.png)
+
+![image-20250904213115021](/static/images/a/image-20250904213115021.png)
+
+![image-20250904213232614](/static/images/a/image-20250904213232614.png)
+
+所以其实Web自动化的核心还是这些测试协议，这从根本上决定了对浏览器的控制深度、灵活性以及执行效率，此外，不同测试工具设计模式、封装程度的差别也会影响开发者的使用体验。
+
+![image-20250904215355839](/static/images/a/image-20250904215355839.png)
+
+比如Selenium封装的浅，如果你想点击页面上一个按钮，你需要先写一句代码等待元素出现，然后再写一句代码点击。而Playwright一句话就搞定，因为他把“等待元素出现”，“点击元素”这两个步骤封装在一起了。这只是举个例子，Playwright其实封装了更多步骤。
+
+## 几种主流自动化测试工具对比
+
+在了解了自动化测试工具的协议基础后，再来看市面上五花八门的测试框架就思路清晰了。
+
+![image-20250907151419631](/static/images/a/image-20250907151419631.png)
+
+Selenium是一个老框架，与剩下三者相比效率更低，学习曲线更陡峭，其对浏览器的控制范围也比不上基于CDP协议的众多现代化框架。
+
+根据zenrows的一个实验，在一个16G内存、2.6 GHz处理器的机器上分别测试playwright、selenium与某网站的交互速度，经过反复测试，playwright比selenium快几百毫秒。
+
+![image-20250907152112478](/static/images/a/image-20250907152112478.png)
+
+但Selenium也有很多优势，是新兴框架无法取代的。
+
+比如最重要的社区生态，Selenium作为2004年左右就普及的框架，比起Playwright这种2020年才兴起的框架，社区规模大很多，你在开发中遇到一个问题，去网上搜一下马上就能找到“前人的经验”。
+
+Selenium还可以控制真实设备、兼容老浏览器、老设备、老系统。比如Playwright在官方文档中提到最低支持的系统是Win10，如果你想在Win7上使用Playwright，得折腾一下。
+
+![image-20250907153200412](/static/images/a/image-20250907153200412.png)
+
+Drissionpage、Playwright、Puppeteer都是主要基于CDP协议的框架，三者在效率上相差不大。如果你是纯前端开发，对于Node.js熟悉，那么Puppeteer、Playwright很适合你，前者更轻量，后者除了支持Chronium浏览器以外，还支持Firefox、Webkit，并且后者封装了很多额外功能，比如在执行页面操作时加入了自动等待，以及现代化的调试、开发工具。如果你更喜欢中文社区、中文文档，那么推荐Drissionpage，这个框架有全中文文档、源码注释，学习起来更方便，但如果你是给公司做项目，请注意开源协议，商用要取得授权。
+
+> [Chronium](https://www.chromium.org/chromium-projects/)是Chrome的开源版本，包含了 Chrome 的所有核心功能。undetected-chromedriver这种反反爬虫检测的chromedriver即改写了Chronium-driver，使网站更难分辨自动化测试工具和真人。
+
+# 参考文档
+
++ https://developer.chrome.com/blog/test-automation-evolution
++ https://firefox-source-docs.mozilla.org/remote/index.html
++ https://testerhome.com/topics/2047/show_wechat
++ https://www.zenrows.com/blog/playwright-vs-selenium#speed
