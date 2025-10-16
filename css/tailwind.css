@@ -7,7 +7,8 @@
 /* Core theme configuration */
 @theme {
   /* Font families */
-  --font-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+  --font-sans:
+    var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
     'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 
   /* Colors */
@@ -16,7 +17,7 @@
   --color-primary-100: oklch(0.948 0.028 342.258);
   --color-primary-200: oklch(0.899 0.061 343.231);
   --color-primary-300: oklch(0.823 0.12 346.018);
-  --color-primary-400: oklch(91.7% 0.08 205.041);/*cyan*/
+  --color-primary-400: oklch(91.7% 0.08 205.041); /*cyan*/
   --color-primary-401: oklch(78.9% 0.154 211.53);
   --color-primary-500: oklch(45% 0.085 224.283);
   --color-primary-600: oklch(30.2% 0.056 229.695);
