@@ -1,0 +1,88 @@
+---
+title: db2管理员API入门
+date: '2025-09-26'
+tags: ['db2']
+images: []
+summary: 本文介绍DB2管理员API的基础知识和使用方法，帮助数据库管理员更有效地管理和监控DB2数据库系统。
+---
+
+# Background
+
+
+
+
+
+# Procedure1
+
+Reference to the offical Cook Book: https://public.dhe.ibm.com/ps/products/db2/info/vr95/pdf/en_US/db2b0e950.pdf?utm_source=chatgpt.com
+
+It point some example code,where to find?
+
+```bash
+C:\Program Files\IBM\SQLLIB\samples\c
+```
+
+There.
+
+You can find a makefile there.
+
+**a.** 直接用 **nmake**（最接近官方的方式）
+
+1. 打开 **x64 Native Tools Command Prompt for VS 2022**（在开始菜单搜索）。
+
+2. 切到 sample 目录（我是从c盘拷贝到了d盘）：
+
+   ```bat
+   cd "D:\work\vstest\c"
+   ```
+
+3. Before you do next.You should notice there some file like xxx.sqc
+
+   This is c with embed SQL file,you should first you IBM db2 prep tools to pre-complie it,make it xxx.c.
+
+   ①. **DB2 命令行窗口**（必须用 `db2cmd` 打开）
+
+   ```bash
+   db2cmd
+   ```
+
+   ②.切到 sample 目录
+
+   ③.用 DB2 预编译器把 `.sqc` 转换成 `.c`：
+
+   ```bash
+   db2 connect to retms # or else it report: 不存在数据库连接。  SQLSTATE=08003
+   # DB2 的预编译器需要知道 SQL 语句里用到的数据库对象（表、列等），所以必须先 connect
+   db2 prep tscreate.sqc bindfile target c
+   ```
+
+   ![A118979D-B664-494E-BF47-490FEB520FD7](/static/images/a/A118979D-B664-494E-BF47-490FEB520FD7.png)
+
+   or you can do this batch
+
+   ```bash
+   for %f in (*.sqc) do db2 prep "%f" bindfile target c
+   ```
+
+   > 如果你想让生成的 SQL 能被数据库识别，需要绑定 `.bnd` 文件：??????
+   >
+   > ```
+   > for %f in (*.bnd) do db2 bind "%f"
+   > ```
+
+   
+
+   > `.sqc` 是 **embedded SQL C 源文件**，需要先用 **DB2 的预编译器**（`db2 prep`）转换成纯 `.c`，才能用 `cl` 编译。
+
+4. 执行：
+
+   ```bat
+   nmake /f makefile
+   ```
+
+   > 这一步会读取 IBM 提供的 `makefile`，自动编译对应的 `.c/.sqc`，最后生成 `.exe`。
+   >  编译成功后，可执行文件一般在当前目录。
+
+报了一堆错，此路中止
+
+# 

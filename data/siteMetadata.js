@@ -1,8 +1,8 @@
 /** @type {import("pliny/config").PlinyConfig } */
 const siteMetadata = {
-  title: 'Jinzunyue Blog',
+  title: 'Jinzunyue',
   author: 'Jinzunyue',
-  headerTitle: 'Jinzunyue Blog',
+  headerTitle: 'Jinzunyue',
   description: 'The mystery of life isn’t a problem to solve, but a reality to experience',
   language: 'en-us',
   theme: 'system', // system, dark or light

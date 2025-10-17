@@ -1,0 +1,118 @@
+---
+title: Activity And Event Monitor for data margin
+date: '2025-10-10'
+tags: ['db2','log','margin']
+images: ['/static/images/a/image-20250930115544332.png','/static/images/a/image-20251009120032125.png','/static/images/a/image-20251009120051126.png']
+summary: This article explains how to use a DB2 Event Monitor to capture and analyze all DML operations in real time, enabling dynamic data migration and change tracking.
+---
+
+# Before Read
+
++ db2 数据动态迁移到汉高（监控所有DML操作）
++ db2 10.5
+
+
+
+
+
+# Procedure
+
+**a. **创建语句事件监视器 (STATEMENTS)
+
+```sql
+CREATE EVENT MONITOR stmtmon
+    FOR STATEMENTS
+    WRITE TO TABLE;
+```
+
++ stmtmon是视图名
++ `FOR STATEMENTS` 表示监控 SQL 语句（也可以监控指定的操作，insert、delete等）
++ `WRITE TO TABLE` 表示把结果存到自动生成的表中
+
+**b. **然后就会在当前模式下生成STMT_视图名的表
+
+![image-20250930115544332](/static/images/a/image-20250930115544332.png)
+
+**c. **Open/Disable Event Monitor
+
+```bash
+-- 启用事件监视器
+SET EVENT MONITOR stmtmon STATE 1;
+
+-- 关闭事件监视器
+SET EVENT MONITOR stmtmon STATE 0;
+```
+
+> 启后会产生额外开销，建议在需要时开启。
+>
+> 删除的话使用：
+>
+> ```sql
+> DROP EVENT MONITOR stmtmon;
+> ```
+>
+> 
+
+<font color="red">BUT where the data？it only Parameter Markers '?' here</font>
+
+**d. **Use CREATE EVENT MONITOR (activities) statement
+
+According to :https://datageek.blog/2013/12/03/using-an-event-monitor-to-capture-statements-with-values-for-parameter-markers/
+
+根据
+
+![image-20251009120032125](/static/images/a/image-20251009120032125.png)
+
+![image-20251009120051126](/static/images/a/image-20251009120051126.png)
+
+找到这个事件输出数据到哪些表。然后点每个表的蓝色链接，去看表的字段含义。
+
+# Commond List
+
+## CREATE EVENT MONITOR
+
+https://www.ibm.com/docs/en/db2/11.1.0?topic=statements-create-event-monitor
+
+## List all Event Monitor
+
+```sql
+SELECT * FROM SYSCAT.EVENTMONITORS;
+```
+
+or
+
+```sql
+SELECT * FROM SYSCAT.EVENTS;
+```
+
+https://www.ibm.com/docs/en/db2/10.5.0?topic=views-syscatevents
+
+## List all Event Mointor Tables
+
+```sql
+SELECT * FROM SYSCAT.EVENTTABLES;
+```
+
+https://www.ibm.com/docs/en/db2/10.5.0?topic=views-syscateventtables
+
+# Reference&More
+
+## Some one already do
+
+https://datageek.blog/2013/12/03/using-an-event-monitor-to-capture-statements-with-values-for-parameter-markers/
+
+## Event monitors
+
+https://www.ibm.com/docs/en/ias?topic=monitoring-event-monitors
+
+## db2evmonfmt tool for reading event monitor data
+
+https://www.ibm.com/docs/en/db2/11.5.x?topic=tables-db2evmonfmt-tool-reading-event-monitor-data
+
+## Miscellaneous variables（如果你想在写入时就尽量减少数据量）
+
+https://www.ibm.com/docs/en/db2/11.1.0?topic=variables-miscellaneous&utm_source=chatgpt.com
+
+## CREATE EVENT MONITOR (activities) statement
+
+https://www.ibm.com/docs/en/db2/10.5.0?topic=statements-create-event-monitor-activities

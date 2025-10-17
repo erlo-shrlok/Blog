@@ -1,0 +1,46 @@
+---
+title: When debug why always step in sqc not c
+date: '2025-10-17'
+tags: ['db2','db2 AdminAPI','c','CLion']
+images: []
+summary: This article explains how to use a DB2 Event Monitor to capture and analyze all DML operations in real time, enabling dynamic data migration and change tracking.
+---
+
+# Background
+
+I already `db2 prep` pre-build my.sqlc to my.c, but when I debug, I always step into sqc file, not my.c file. Why?
+
+# Trace
+
+When you pre-build my.sqlc → my.c, the compiler treats .c as the source, but the debugger may still show .sqlc due to line markers (#line directives in generated .c).
+
+So, How DID CLion Debuger know Step in sqc? We know c debuger must cant read sqc file,
+So Why it know go to the right line in sqc file?
+
+Look my.c the result of db2 pre-build tools,We find some Strange line like this:
+
+```c
+#line 1 "my.sqc"
+#line 131 "my.sqc"
+      sql_setdlist[0].sqltype = 460; sql_setdlist[0].sqllen = 15;
+#line 131 "my.sqc"
+      sql_setdlist[0].sqldata = (void*)dbAlias;
+#line 131 "my.sqc"
+      sql_setdlist[0].sqlind = 0L;
+```
+
+What if we remove all these line.
+
+```python
+import sys
+
+with open('D:/work/c/TestDB2API/my.c','r',encoding='utf-8') as f:
+    lines = f.readlines()
+
+filtered_lines = [line for line in lines if not line.lstrip().startswith('#line')]
+
+with open('my.c','w',encoding='utf-8') as f:
+    f.writelines(filtered_lines)
+```
+
+Resolved.

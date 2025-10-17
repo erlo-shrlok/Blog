@@ -1,0 +1,84 @@
+---
+title: 开启归档后的问题archiver error系列
+date: '2025-10-09'
+tags: ['log','oracle','error','database']
+images: []
+summary: 
+---
+
+# Background
+
++ 参考F:\Jinzunyue的开发存档\24.数据迁移脚本优化\flink-cdc\入门.md打开了oracle日志归档
++ 
+
+# ORA-00257: archiver error, Connect internal only, untilfreed.
+
+是 **Oracle 数据库归档日志（archive log）写不进去** 导致的典型错误。简单说就是：
+ **归档日志磁盘满了**，Oracle 为了保证数据安全，**停止了所有非SYS用户的数据库写操作**。
+
+## Procedure
+
+**a. **连接 SYSDBA 用户
+
+```bash
+su oracle
+sqlplus / as sysdba
+```
+
+**b. **确认数据库归档模式
+
+```bash
+archive log list;
+```
+
+如果 Archive destination 是空的或 USE_DB_RECOVERY_FILE_DEST
+
+执行
+
+```bash
+show parameter db_recovery_file_dest;
+```
+
+我这里显示
+
+```bash
+NAME TYPE VALUE ------------------------------------ ----------- ------------------------------ db_recovery_file_dest string /join/oracle/oradata/recovery_ area db_recovery_file_dest_size big integer 35G 
+SQL> 
+```
+
++ db_recovery_file_dest: 快速恢复区（FRA）路径正确
+
++ db_recovery_file_dest_size 35G:  Oracle 只允许 FRA 使用 **35G 空间**
++ 实际磁盘使用情况,仅用 32%，磁盘很空,物理磁盘没满，但 Oracle 认为 FRA “逻辑上已满”
+
+@Jin，我当时配置了10G
+
+**c. **清理归档日志
+
+进入 RMAN：(退出sqlplus，在linux上执行)
+
+```
+rman target /
+```
+
+一次性删除所有旧归档：
+
+```
+DELETE NOPROMPT ARCHIVELOG ALL;
+```
+
+清理完成后检查
+
+```
+CROSSCHECK ARCHIVELOG ALL;
+REPORT OBSOLETE;
+```
+
+然后回 SQL*Plus 检查数据库状态：
+
+```
+sqlplus / as sysdba
+SQL> ARCHIVE LOG LIST;
+```
+
+应显示归档日志写入正常。
